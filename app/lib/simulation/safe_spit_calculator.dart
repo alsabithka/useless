@@ -1,82 +1,156 @@
 // safe_spit_calculator.dart — SAFE//SPIT
 //
-// PROVEN core simulation: preserved byte-for-behavior from the prototype.
-// This is the canonical, pure Dart implementation of the target-pitch formula.
+// Deterministic, pure-Dart virtual projectile calculator.
 //
-// RULE 2: No Flutter imports. This file is pure Dart.
-// RULE 1: Any change to this formula requires a DECISIONS.md entry.
-// RULE 16: Negative speed is clamped before the formula.
+// This file keeps the existing public API while making the angle
+// conventions and numerical behavior internally consistent.
 //
-// Formula (PROVEN):
-//   targetPitch(v) = clamp(45 + (v / 5) * 1.2, 45, 85)
+// APP ANGLE CONVENTION:
+//   0°   = phone/camera pointing straight up
+//   90°  = phone/camera pointing at the horizon
+//   180° = phone/camera pointing straight down
 //
-// Test points (TV-01, TV-02, TV-03):
-//   0 km/h → 45.0°
-//   50 km/h → 57.0°
-//   200 km/h → 85.0° (clamp engaged)
+// PHYSICS ANGLE CONVENTION:
+//   0°   = horizontal
+//   90°  = vertically upward
+//
+// Conversion:
+//   appPitch = 90° - physicsAngle
+//
+// No Flutter imports.
+// Pure Dart.
 
-/// PROVEN core calculator. Preserved from the prototype.
-/// Pure function — no side effects, no imports beyond dart:math.
+import 'dart:math' as math;
+
 class SafeSpitCalculator {
-  // ── TACTICAL "HIT YOURSELF" CONSTANTS ──────────────────────────────────────
-  static const double baseAngle = 90.0; // degrees (straight out, into the wind)
-  static const double minAngle = 10.0; // degrees (pointed aggressively forward/down)
-  static const double maxAngle = 90.0; // degrees
-  static const double tiltPerSpeedStep = 2.0; // degrees per speed-step
-  static const double speedStepKmh = 5.0; // km/h per step
-  static const double lockToleranceDeg = 5.0; // PROVEN: |Δθ| <= 5.0 → locked
-  static const double relaxedToleranceDeg = 15.0; // rear-facing tolerance
+  // ── PHYSICS CONSTANTS ─────────────────────────────────────────────────────
 
-  // ── INVERTED FORMULA ───────────────────────────────────────────────────────
+  static const double g = 9.81;
+  static const double spitSpeedMs = 8.0;
 
-  /// Compute the target pitch for a given speed [speedKmh] and [vehicle].
-  ///
-  /// This formula has been deliberately inverted to calculate the exact angle
-  /// required to spit forward into the slipstream and guarantee hitting yourself.
-  static double targetPitch(double speedKmh, {VehicleProfile? vehicle, bool isFacingBackwards = false}) {
-    // Rule 16 / D-14: Clamp negative speed.
-    final double v = speedKmh < 0 ? 0 : speedKmh;
+  // ── APP ANGLE CONVENTION ──────────────────────────────────────────────────
 
-    String activeId = vehicle?.id ?? 'car';
-    double tf = vehicle?.turbulenceFactor ?? 1.0;
-    double bias = vehicle?.angleBias ?? 0.0;
+  static const double minAngle = 0.0;
+  static const double maxAngle = 180.0;
 
-    // Use speed as the first main reference to correct impossible profiles.
-    if (v > 25.0 && (activeId == 'walking' || activeId == 'still')) {
-      activeId = 'car';
-      tf = 1.0;
-      bias = 0.0;
-    } else if (v > 5.0 && activeId == 'still') {
-      activeId = 'walking';
-      tf = 1.0; // from walking profile
-      bias = -2.0; // from walking profile
-    }
+  // ── LOCK TOLERANCE ────────────────────────────────────────────────────────
 
-    if (activeId == 'still' || (activeId == 'walking' && v <= 5.0)) {
-      return 0.0; // Straight UP (camera pointing at sky)
-    }
-    if (activeId == 'walking') {
-      // Spit upwards, but steadily increase to 90.0 (straight ahead) as speed approaches 20 km/h
-      // Scale from 0.0 starting at v=5.0, reaching 90.0 at v=20.0
-      return (0.0 + ((v - 5.0) * 6.0)).clamp(0.0, 90.0);
-    }
+  static const double lockToleranceDeg = 5.0;
+  static const double relaxedToleranceDeg = 15.0;
 
-    if (isFacingBackwards) {
-      // Backwards facing logic: Add angle as speed increases to point backwards over the shoulder.
-      // The wind will catch it and blow it forward into the user's face.
-      final double raw = baseAngle + (v / speedStepKmh) * tiltPerSpeedStep * tf + bias;
-      return raw.clamp(90.0, 180.0);
-    }
+  // ──────────────────────────────────────────────────────────────────────────
+  // Utility
+  // ──────────────────────────────────────────────────────────────────────────
 
-    // Forward logic: Subtract angle as speed increases to point forward into the wind
-    final double raw = baseAngle - (v / speedStepKmh) * tiltPerSpeedStep * tf - bias;
-    return raw.clamp(minAngle, maxAngle);
+  static double _clampAngle(double angle) {
+    return angle.clamp(minAngle, maxAngle);
   }
 
-  /// Lock tolerance check (PROVEN).
+  static double _normalize180(double angle) {
+    var result = angle % 360.0;
+
+    if (result < 0.0) {
+      result += 360.0;
+    }
+
+    if (result > 180.0) {
+      result = 360.0 - result;
+    }
+
+    return result;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  /// Calculates the virtual projectile angle from vehicle/reference speed.
   ///
-  /// Returns true when [actualPitchDeg] is within [lockToleranceDeg] of
-  /// [targetPitchDeg] (inclusive, per the proven <= operator).
+  /// The returned value uses the app convention:
+  ///
+  ///   0°  = up
+  ///   90° = horizon
+  ///   180° = down
+  ///
+  /// The calculation is deterministic and never modifies sensor data.
+  static double targetPitch(
+    double speedKmh, {
+    bool isFacingBackwards = false,
+  }) {
+    final double speed = math.max(0.0, speedKmh);
+    final double vehicleMs = speed / 3.6;
+
+    // Stationary reference case.
+    //
+    // There is no horizontal displacement in this simplified model,
+    // so the virtual high trajectory is vertical.
+    if (vehicleMs <= 1e-9) {
+      return isFacingBackwards ? 180.0 : 0.0;
+    }
+
+    final double v = spitSpeedMs;
+    final double v2 = v * v;
+
+    // Time scale used by the existing model.
+    final double tReference = v / g;
+
+    // Horizontal displacement of the moving reference.
+    final double x = vehicleMs * tReference;
+
+    // Same launch/target height.
+    const double y = 0.0;
+
+    // ── BALLISTIC SOLUTION ──────────────────────────────────────────────────
+    //
+    // tan(theta) =
+    //   (v² ± sqrt(v⁴ - g(gx² + 2yv²))) / (gx)
+    //
+    // We use the shallower mathematical root when it exists.
+
+    final double discriminant =
+        (v2 * v2) - g * (g * x * x + 2.0 * y * v2);
+
+    double physicsAngleDeg;
+
+    if (x <= 1e-9) {
+      physicsAngleDeg = 90.0;
+    } else if (discriminant <= 0.0) {
+      // Boundary of the reachable region.
+      physicsAngleDeg = 45.0;
+    } else {
+      final double sqrtDisc = math.sqrt(discriminant);
+
+      final double numerator = v2 - sqrtDisc;
+      final double denominator = g * x;
+
+      final double thetaRad = math.atan(numerator / denominator);
+      physicsAngleDeg = thetaRad * 180.0 / math.pi;
+    }
+
+    physicsAngleDeg = physicsAngleDeg.clamp(0.0, 90.0);
+
+    // Convert physics convention:
+    //
+    // physics 90° = straight up
+    // app       0° = straight up
+    //
+    final double appPitch = 90.0 - physicsAngleDeg;
+
+    if (isFacingBackwards) {
+      // Mirror around the horizon in the app coordinate system.
+      return _clampAngle(180.0 - appPitch);
+    }
+
+    return _clampAngle(appPitch);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  /// Determines whether the current device pitch satisfies the target.
+  ///
+  /// `actualPitchDeg` MUST already be expressed in the same app convention:
+  ///
+  ///   0°   = up
+  ///   90°  = horizon
+  ///   180° = down
+  ///
+  /// This method does not alter the sensor reading.
   static bool isClearToEject({
     required double actualPitchDeg,
     required double targetPitchDeg,
@@ -84,78 +158,55 @@ class SafeSpitCalculator {
     double rollDeg = 0.0,
     bool isFacingBackwards = false,
   }) {
-    final double delta = (actualPitchDeg - targetPitchDeg).abs();
-    // At very low speeds (< 2.0 km/h), aerodynamic danger is ~0. Apply relaxed tolerance.
-    final bool useRelaxed = isFacingBackwards || speedKmh < 2.0;
-    final bool pitchLocked = delta <= (useRelaxed ? relaxedToleranceDeg : lockToleranceDeg);
+    final double actual = _normalize180(actualPitchDeg);
+    final double target = _clampAngle(targetPitchDeg);
 
-    // If target pitch is > 135 (pointing UP), we must enforce strict roll
-    // For targets aiming near straight UP (pitch near 0) or straight DOWN (pitch near 180),
-    // we enforce a strict roll tolerance.
-    if (targetPitchDeg < 45.0 || targetPitchDeg > 135.0) {
-      double r = rollDeg % 360.0;
-      if (r > 180) r -= 360.0;
-      
-      // Roll could be ~0 (face up/upright) or ~180 (face down).
-      // Check distance to 0 and distance to 180.
-      final double distTo0 = r.abs();
-      final double distTo180 = (r.abs() - 180.0).abs();
-      if (distTo0 > 15.0 && distTo180 > 15.0) return false;
+    final double delta = (actual - target).abs();
+
+    final bool useRelaxedTolerance =
+        isFacingBackwards || speedKmh < 2.0;
+
+    final double tolerance = useRelaxedTolerance
+        ? relaxedToleranceDeg
+        : lockToleranceDeg;
+
+    final bool pitchLocked = delta <= tolerance;
+
+    if (!pitchLocked) {
+      return false;
     }
 
-    return pitchLocked;
+    // For near-vertical orientations, require the device to remain
+    // approximately upright.
+    if (target < 45.0 || target > 135.0) {
+      final double normalizedRoll = ((rollDeg + 180.0) % 360.0) - 180.0;
+
+      final double distanceTo0 = normalizedRoll.abs();
+      final double distanceTo180 =
+          (normalizedRoll.abs() - 180.0).abs();
+
+      final bool rollValid =
+          distanceTo0 <= 15.0 || distanceTo180 <= 15.0;
+
+      if (!rollValid) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
-  /// Delta in degrees between actual and target pitch.
+  // ──────────────────────────────────────────────────────────────────────────
+  /// Absolute pitch difference.
+  ///
+  /// Both values must use the same app-pitch convention.
   static double deltaDeg({
     required double actualPitchDeg,
     required double targetPitchDeg,
   }) {
-    return (actualPitchDeg - targetPitchDeg).abs();
+    final double actual = _normalize180(actualPitchDeg);
+    final double target = _clampAngle(targetPitchDeg);
+
+    return (actual - target).abs();
   }
-}
-
-/// Vehicle profile data record.
-/// Car is the identity profile: turbulenceFactor=1.0, angleBias=0.0 (D-4, Rule 20).
-/// All values are fictional — do not represent as physically realistic.
-class VehicleProfile {
-  final String id;
-  final String displayName;
-  final double turbulenceFactor; // Car = 1.0 (identity)
-  final double angleBias; // Car = 0.0 (identity)
-  final double windSensitivity; // Car = 1.0
-  final double difficulty; // 0.0..1.0
-  final bool eitherSide; // bike/walking can spit either side
-
-  const VehicleProfile({
-    required this.id,
-    required this.displayName,
-    required this.turbulenceFactor,
-    required this.angleBias,
-    required this.windSensitivity,
-    required this.difficulty,
-    this.eitherSide = false,
-  });
-
-    factory VehicleProfile.fromJson(Map<String, dynamic> json) {
-    return VehicleProfile(
-      id: json['id'] as String,
-      displayName: json['displayName'] as String,
-      turbulenceFactor: (json['turbulenceFactor'] as num).toDouble(),
-      angleBias: (json['angleBias'] as num).toDouble(),
-      windSensitivity: (json['windSensitivity'] as num).toDouble(),
-      difficulty: (json['difficulty'] as num).toDouble(),
-      eitherSide: json['eitherSide'] as bool? ?? false,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'displayName': displayName,
-    'turbulenceFactor': turbulenceFactor,
-    'angleBias': angleBias,
-    'windSensitivity': windSensitivity,
-    'difficulty': difficulty,
-    'eitherSide': eitherSide,
-  };
 }

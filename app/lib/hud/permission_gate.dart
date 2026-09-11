@@ -210,16 +210,7 @@ class _PermissionGateState extends State<PermissionGate> {
 
                     const SizedBox(height: 12),
 
-                    // PLANNED (Phase 8): Vehicle selection
-                    Consumer<GameState>(
-                      builder: (context, gameState, _) {
-                        return _buildButton(
-                          label: 'VEHICLE: ${gameState.vehicle.displayName.toUpperCase()}',
-                          onTap: () => Navigator.pushNamed(context, '/vehicle_select'),
-                          filled: false,
-                        );
-                      }
-                    ),
+
                   ],
 
                   const SizedBox(height: 32),

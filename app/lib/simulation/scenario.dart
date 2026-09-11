@@ -13,7 +13,6 @@ import 'safe_spit_calculator.dart';
 class ScenarioInput {
   final String schemaVersion;
   final String seed; // 6-char uppercase hex (D-19)
-  final VehicleProfile vehicle;
   final double speedKmh;
   final double pitchDeg; // actualPitchDeg from sensor abstraction
   final double rollDeg;
@@ -29,7 +28,6 @@ class ScenarioInput {
   const ScenarioInput({
     this.schemaVersion = '0.1.0',
     required this.seed,
-    required this.vehicle,
     required this.speedKmh,
     required this.pitchDeg,
     this.rollDeg = 0.0,
@@ -47,7 +45,6 @@ class ScenarioInput {
     return ScenarioInput(
       schemaVersion: json['schemaVersion'] as String? ?? '0.1.0',
       seed: json['seed'] as String,
-      vehicle: VehicleProfile.fromJson(json['vehicle'] as Map<String, dynamic>),
       speedKmh: (json['speedKmh'] as num).toDouble(),
       pitchDeg: (json['pitchDeg'] as num).toDouble(),
       rollDeg: (json['rollDeg'] as num?)?.toDouble() ?? 0.0,
@@ -65,7 +62,6 @@ class ScenarioInput {
   Map<String, dynamic> toJson() => {
         'schemaVersion': schemaVersion,
         'seed': seed,
-        'vehicle': vehicle.toJson(),
         'speedKmh': speedKmh,
         'pitchDeg': pitchDeg,
         'rollDeg': rollDeg,

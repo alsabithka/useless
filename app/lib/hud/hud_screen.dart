@@ -19,11 +19,11 @@ import '../game/spit_lock_controller.dart';
 import '../sensors/normalized_telemetry.dart';
 import '../simulation/scenario.dart';
 import '../simulation/trajectory_model.dart';
-import '../simulation/vehicle_profiles.dart';
 import '../simulation/safe_spit_calculator.dart';
 import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
 import 'missile_lock_reticle_painter.dart';
+import 'static_head_guide_painter.dart';
 
 /// The main HUD screen. Displays camera passthrough with tactical reticle overlay.
 /// Listens to [GameState] via Provider.
@@ -161,6 +161,12 @@ class _HudScreenState extends State<HudScreen>
 
               // ── PROVEN: Green tint overlay (5% opacity) ──────────────────
               Container(color: kCameraTint.withValues(alpha: 0.05)),
+
+              // ── STATIC HEAD GUIDE ────────────────────────────────────────
+              CustomPaint(
+                painter: StaticHeadGuidePainter(color: kTacticalGreen),
+                size: MediaQuery.of(context).size,
+              ),
 
               // ── PROVEN: Reticle overlay ──────────────────────────────────
               AnimatedBuilder(
@@ -343,123 +349,11 @@ class _HudScreenState extends State<HudScreen>
               ),
             ),
           ),
-          Flexible(
-            child: GestureDetector(
-              onTap: () => _showVehicleSelector(context, gameState),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: kTacticalGreen.withValues(alpha: 0.3)),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _hudText(gameState.vehicle.displayName.toUpperCase()),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_drop_up, color: kTacticalGreen, size: 16),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
-
-  void _showVehicleSelector(BuildContext context, GameState gameState) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.black.withValues(alpha: 0.9),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (BuildContext sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: kTacticalGreen, width: 2)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'SELECT VEHICLE',
-                style: _bigHudStyle(size: 16),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: VehicleProfiles.all.map((profile) {
-                    final bool isSelected = profile.id == gameState.vehicle.id;
-                    return ListTile(
-                      title: Text(
-                        profile.displayName.toUpperCase(),
-                        style: TextStyle(
-                          color: isSelected ? Colors.black : kTacticalGreen,
-                          fontFamily: 'SpaceMono',
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      tileColor: isSelected ? kTacticalGreen : Colors.transparent,
-                      onTap: () {
-                        if (!profile.eitherSide) {
-                          Navigator.of(context).pop();
-                          _askSide(context, gameState, profile);
-                          return;
-                        }
-                        gameState.selectVehicle(profile);
-                        Navigator.of(context).pop();
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   // ── RULE 8: Demo Mode indicator ──────────────────────────────────────────
-
-  void _askSide(BuildContext context, GameState gameState, VehicleProfile profile) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.black.withValues(alpha: 0.9),
-      builder: (sheetContext) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('SELECT SIDE — ${profile.displayName.toUpperCase()}', style: _bigHudStyle(size: 14)),
-            const SizedBox(height: 12),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              ElevatedButton(
-                onPressed: () {
-                  gameState.selectVehicle(profile);
-                  gameState.setSeatSide('driver'); // Internal logic still driver/passenger
-                  Navigator.of(context).pop(); // close side sheet
-                },
-                child: const Text('RIGHT SIDE'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  gameState.selectVehicle(profile);
-                  gameState.setSeatSide('passenger');
-                  Navigator.of(context).pop(); // close side sheet
-                },
-                child: const Text('LEFT SIDE'),
-              ),
-            ]),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildDemoModeIndicator() {
     return Container(

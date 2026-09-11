@@ -13,7 +13,6 @@ import 'game/game_state.dart';
 import 'hud/hud_screen.dart';
 import 'hud/permission_gate.dart';
 import 'screens/result_screen.dart';
-import 'screens/vehicle_select_screen.dart';
 
 late List<CameraDescription> globalCameras;
 
@@ -64,7 +63,6 @@ class SafeSpitApp extends StatelessWidget {
         routes: {
           '/gate': (_) => const PermissionGate(),
           '/hud': (_) => const SafeSpitHudWrapper(),
-          '/vehicle_select': (_) => const VehicleSelectScreen(),
           '/result': (_) => const ResultScreen(),
         },
       ),

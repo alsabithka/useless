@@ -11,7 +11,6 @@ import '../simulation/safe_spit_calculator.dart';
 import '../simulation/scenario.dart';
 import '../simulation/scoring.dart';
 import '../simulation/simulation_engine.dart';
-import '../simulation/vehicle_profiles.dart';
 import '../sensors/sensor_manager.dart';
 import '../sensors/demo_mode_source.dart';
 import 'dart:async';
@@ -37,8 +36,6 @@ class GameState extends ChangeNotifier {
   String _seed = 'DEMO01'; // default demo seed
   String get seed => _seed;
 
-  VehicleProfile _vehicle = VehicleProfiles.car;
-  VehicleProfile get vehicle => _vehicle;
   String _seatSide = 'driver'; // India: driver=right, passenger=left
   String get seatSide => _seatSide;
 
@@ -117,7 +114,6 @@ class GameState extends ChangeNotifier {
     // Run the simulation
     final scenario = ScenarioInput(
       seed: _seed,
-      vehicle: _vehicle,
       speedKmh: telemetry.speedKmh,
       pitchDeg: telemetry.pitchDeg,
       rollDeg: telemetry.rollDeg,
@@ -129,6 +125,17 @@ class GameState extends ChangeNotifier {
     );
 
     _simResult = simulate(scenario);
+
+    // ── DEBUG: pitch coordinate-system verification ──────────────────────
+    // Remove once lock behaviour is confirmed correct.
+    debugPrint(
+      '[LOCK] actual=${telemetry.pitchDeg.toStringAsFixed(1)}°  '
+      'target=${_simResult!.targetPitchDeg.toStringAsFixed(1)}°  '
+      'error=${_simResult!.deltaDeg.toStringAsFixed(1)}°  '
+      'locked=${_simResult!.isClearToEject}  '
+      'speed=${telemetry.speedKmh.toStringAsFixed(1)} km/h',
+    );
+    // ────────────────────────────────────────────────────────────────────
 
     // Process lock state machine
     lockController.processTick(_simResult!, DateTime.now());
@@ -177,9 +184,8 @@ class GameState extends ChangeNotifier {
   }
 
   /// Start a new round with the same or new scenario, returning to the menu.
-  void reset({String? seed, VehicleProfile? vehicle, String? mode}) {
+  void reset({String? seed, String? mode}) {
     _seed = seed ?? _generateSeed();
-    _vehicle = vehicle ?? _vehicle;
     _mode = mode ?? _mode;
     _hudLiveStart = null;
     _timeToLockMs = 0;
@@ -201,10 +207,6 @@ class GameState extends ChangeNotifier {
     _setPhase(GamePhase.hudLive);
   }
 
-  void selectVehicle(VehicleProfile vehicle) {
-    _vehicle = vehicle;
-    notifyListeners();
-  }
   void setSeatSide(String s) { _seatSide = s; notifyListeners(); }
 
   void _setPhase(GamePhase phase) {

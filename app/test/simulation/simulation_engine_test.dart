@@ -6,7 +6,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safespit/simulation/simulation_engine.dart';
 import 'package:safespit/simulation/scenario.dart';
-import 'package:safespit/simulation/vehicle_profiles.dart';
 
 void main() {
   group('SimulationEngine — test vectors', () {
@@ -21,7 +20,6 @@ void main() {
     }) {
       return ScenarioInput(
         seed: seed,
-        vehicle: VehicleProfiles.car,
         speedKmh: speedKmh,
         pitchDeg: pitchDeg,
         windSpeedKmh: windSpeedKmh,
@@ -116,7 +114,6 @@ void main() {
     test('TV-10: same inputs produce identical results (determinism)', () {
       final scenario = ScenarioInput(
         seed: 'ABC123',
-        vehicle: VehicleProfiles.car,
         speedKmh: 75.0,
         pitchDeg: 60.0,
         windSpeedKmh: 5.0,
@@ -139,7 +136,6 @@ void main() {
     test('lockQuality=1.0 when pitch exactly matches target', () {
       final result = simulate(ScenarioInput(
         seed: '000000',
-        vehicle: VehicleProfiles.car,
         speedKmh: 50.0,
         pitchDeg: 70.0,
       ));
@@ -149,7 +145,6 @@ void main() {
     test('lockQuality=0.0 when not locked', () {
       final result = simulate(ScenarioInput(
         seed: '000000',
-        vehicle: VehicleProfiles.car,
         speedKmh: 50.0,
         pitchDeg: 0.0, // way off target
       ));
@@ -159,7 +154,6 @@ void main() {
     test('lockQuality between 0 and 1 at tolerance edge', () {
       final result = simulate(ScenarioInput(
         seed: '000000',
-        vehicle: VehicleProfiles.car,
         speedKmh: 50.0,
         pitchDeg: 65.0, // delta=5.0, exactly at edge
       ));

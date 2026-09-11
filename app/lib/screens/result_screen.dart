@@ -1,4 +1,4 @@
-// result_screen.dart � SAFE//SPIT
+﻿// result_screen.dart — SAFE//SPIT
 //
 // PLANNED: Dedicated result screen (Phase 9).
 // Shows score breakdown, letter grade, mission metadata, and
@@ -236,7 +236,7 @@ class ResultScreen extends StatelessWidget {
     child: Column(
       children: [
         _metaRow('SEED',    gameState.seed),
-        _metaRow('VEHICLE', gameState.vehicle.displayName.toUpperCase()),
+
         _metaRow('MODE',    gameState.mode.toUpperCase()),
       ],
     ),
