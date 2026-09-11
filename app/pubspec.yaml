@@ -30,6 +30,9 @@ dependencies:
   shared_preferences: ^2.5.3
   supabase_flutter: ^2.9.1
 
+  # Typography — Space Grotesk for editorial headings (mirrors website font stack)
+  google_fonts: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

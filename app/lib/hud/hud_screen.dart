@@ -24,6 +24,7 @@ import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
 import '../challenge/challenge_controller.dart';
 import '../challenge/challenge_state.dart';
+import '../theme/app_theme.dart';
 import 'missile_lock_reticle_painter.dart';
 import 'static_head_guide_painter.dart';
 
@@ -131,7 +132,7 @@ class _HudScreenState extends State<HudScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.background,
       body: Consumer<GameState>(
         builder: (context, gameState, _) {
           final telemetry = gameState.telemetry;
@@ -150,10 +151,10 @@ class _HudScreenState extends State<HudScreen>
             fit: StackFit.expand,
             children: [
               _buildCameraLayer(),
-              Container(color: kCameraTint.withValues(alpha: 0.05)),
+              Container(color: AppColors.acidGreen.withValues(alpha: 0.05)),
               CustomPaint(
-                painter: StaticHeadGuidePainter(color: kTacticalGreen),
-                size: MediaQuery.of(context).size,
+                painter: StaticHeadGuidePainter(color: AppColors.acidGreen),
+                size: MediaQuery.sizeOf(context),
               ),
               AnimatedBuilder(
                 animation: _pulseController,
@@ -171,58 +172,44 @@ class _HudScreenState extends State<HudScreen>
                     deviationM: simResult?.deviationM,
                     animValue: _pulseController.value,
                   ),
-                  size: MediaQuery.of(context).size,
+                  size: MediaQuery.sizeOf(context),
                 ),
               ),
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                child: _buildTopBar(simResult, telemetry, lockState),
+                child: _buildTopBar(context, simResult, telemetry, lockState),
               ),
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: _buildBottomBar(telemetry, lockState, gameState),
+                child: _buildBottomBar(context, telemetry, lockState, gameState),
               ),
-              if (telemetry.isDemoMode)
-                Positioned(top: 80, right: 16, child: _buildDemoModeIndicator()),
-              if (gameState.isFacingBackwards)
-                Positioned(
-                  top: telemetry.isDemoMode ? 120 : 80,
-                  right: 16,
-                  child: _buildRearFacingIndicator(),
-                ),
-              Positioned(
-                top: telemetry.isDemoMode
-                    ? (gameState.isFacingBackwards ? 160 : 120)
-                    : (gameState.isFacingBackwards ? 120 : 80),
-                right: 16,
-                child: IconButton(
-                  icon: const Icon(Icons.flip_camera_ios, color: kTacticalGreen),
-                  onPressed: _toggleCamera,
-                  tooltip: 'Switch Camera',
-                ),
-              ),
+              // Overlay indicators — positioned dynamically from safe area top
+              _buildOverlayIndicators(context, telemetry, gameState),
               if (lockState == SpitLockState.locked &&
                   gameState.phase != GamePhase.launched &&
                   gameState.phase != GamePhase.scored &&
                   !_challengeController.isRunning)
                 Positioned(
-                  bottom: 80,
+                  // Keep launch button above the bottom bar (~12% from bottom)
+                  bottom: MediaQuery.sizeOf(context).height * 0.12,
                   left: 0,
                   right: 0,
-                  child: _buildLaunchButton(gameState),
+                  child: _buildLaunchButton(context, gameState),
                 ),
               if (_challengeController.isRunning)
                 Center(
                   child: Text(
                     _challengeLabel(_challengeState),
-                    style: const TextStyle(
-                      color: kTacticalGreen,
+                    style: TextStyle(
+                      color: AppColors.acidGreen,
                       fontFamily: 'SpaceMono',
-                      fontSize: 64,
+                      // Responsive countdown: ~16% of screen width
+                      fontSize: (MediaQuery.sizeOf(context).width * 0.16)
+                          .clamp(48.0, 80.0),
                       fontWeight: FontWeight.bold,
                       letterSpacing: 6,
                     ),
@@ -243,21 +230,18 @@ class _HudScreenState extends State<HudScreen>
       return CameraPreview(_cameraController!);
     }
     if (_cameraError) {
-      // PROVEN fallback: black background with camera error indicator
+      // PROVEN fallback: background with camera error indicator
       return Container(
-        color: Colors.black,
+        color: AppColors.background,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.videocam_off, color: kTacticalGreen.withValues(alpha: 0.4), size: 48),
+              const Icon(Icons.videocam_off, color: AppColors.gray, size: 48),
               const SizedBox(height: 8),
               Text(
                 'OPTICAL SENSOR OFFLINE',
-                style: TextStyle(
-                  color: kTacticalGreen.withValues(alpha: 0.4),
-                  fontFamily: 'SpaceMono',
-                  fontSize: 12,
+                style: AppTextStyles.technicalLabel.copyWith(
                   letterSpacing: 2,
                 ),
               ),
@@ -267,27 +251,32 @@ class _HudScreenState extends State<HudScreen>
       );
     }
     // Loading state
-    return Container(color: Colors.black);
+    return Container(color: AppColors.background);
   }
 
   // ── PROVEN: Top diagnostics bar ──────────────────────────────────────────
 
   Widget _buildTopBar(
+      BuildContext context,
       SimulationResult? simResult, NormalizedTelemetry telemetry, SpitLockState lockState) {
     final double tgt = simResult?.targetPitchDeg ?? 45.0;
     final double act = telemetry.pitchDeg;
     final double delta = simResult?.deltaDeg ?? (act - tgt).abs();
+    final double topPad = MediaQuery.paddingOf(context).top;
+    final double hudFontSize =
+        (MediaQuery.sizeOf(context).width * 0.027).clamp(9.0, 13.0);
 
     return Container(
-      color: Colors.black.withValues(alpha: 0.6),
-      padding: const EdgeInsets.fromLTRB(12, 36, 12, 8),
+      color: AppColors.background.withValues(alpha: 0.9),
+      // Use the actual status bar height + small margin instead of hardcoded 36
+      padding: EdgeInsets.fromLTRB(12, topPad + 8, 12, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(child: _hudText('SPIT v1.0')),
-          Flexible(child: _hudText('TGT ${tgt.toStringAsFixed(1)}°')),
-          Flexible(child: _hudText('ACT ${act.toStringAsFixed(1)}°')),
-          Flexible(child: _hudText('Δ ${delta.toStringAsFixed(1)}°')),
+          Flexible(child: _hudText('SPIT v1.0', fontSize: hudFontSize)),
+          Flexible(child: _hudText('TGT ${tgt.toStringAsFixed(1)}°', fontSize: hudFontSize)),
+          Flexible(child: _hudText('ACT ${act.toStringAsFixed(1)}°', fontSize: hudFontSize)),
+          Flexible(child: _hudText('Δ ${delta.toStringAsFixed(1)}°', fontSize: hudFontSize)),
         ],
       ),
     );
@@ -296,6 +285,7 @@ class _HudScreenState extends State<HudScreen>
   // ── PROVEN: Bottom telemetry bar ──────────────────────────────────────────
 
   Widget _buildBottomBar(
+      BuildContext context,
       NormalizedTelemetry telemetry, SpitLockState lockState, GameState gameState) {
     final String lockText = lockState == SpitLockState.locked
         ? '■ SPIT LOCK'
@@ -304,30 +294,35 @@ class _HudScreenState extends State<HudScreen>
             : '○ SEARCHING';
 
     final Color lockColor = lockState == SpitLockState.locked
-        ? kTacticalGreen
+        ? AppColors.black
         : lockState == SpitLockState.locking
-            ? kTacticalGreen.withValues(alpha: 0.7)
-            : kTacticalGreen.withValues(alpha: 0.4);
+            ? AppColors.black.withValues(alpha: 0.7)
+            : AppColors.gray;
+
+    final double bottomPad = MediaQuery.paddingOf(context).bottom;
+    final double hudFontSize =
+        (MediaQuery.sizeOf(context).width * 0.027).clamp(9.0, 13.0);
 
     return Container(
-      color: Colors.black.withValues(alpha: 0.6),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+      color: AppColors.background.withValues(alpha: 0.9),
+      // Use actual gesture bar height + margin instead of hardcoded 20
+      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPad + 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Flexible(child: _hudText('${telemetry.speedKmh.toStringAsFixed(0)} KM/H')),
+          Flexible(child: _hudText('${telemetry.speedKmh.toStringAsFixed(0)} KM/H', fontSize: hudFontSize)),
           Flexible(
             child: _hudText(
               '${_cardinal(telemetry.headingDeg ?? telemetry.anchorCompassHeading ?? 0.0)} ${(telemetry.headingDeg ?? telemetry.anchorCompassHeading ?? 0.0).toStringAsFixed(0)}°',
+              fontSize: hudFontSize,
             ),
           ),
           Flexible(
             child: Text(
               lockText,
-              style: TextStyle(
+              style: AppTextStyles.technicalLabel.copyWith(
                 color: lockColor,
-                fontFamily: 'SpaceMono',
-                fontSize: 12,
+                fontSize: hudFontSize,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.5,
               ),
@@ -344,16 +339,14 @@ class _HudScreenState extends State<HudScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        border: Border.all(color: kTacticalGreen.withValues(alpha: 0.6)),
-        color: Colors.black.withValues(alpha: 0.5),
+        border: AppBorders.strong,
+        color: AppColors.background.withValues(alpha: 0.9),
       ),
       child: Text(
         'DEMO MODE',
-        style: TextStyle(
-          color: kTacticalGreen,
-          fontFamily: 'SpaceMono',
+        style: AppTextStyles.technicalLabel.copyWith(
+          color: AppColors.black,
           fontSize: 10,
-          letterSpacing: 2,
         ),
       ),
     );
@@ -363,17 +356,15 @@ class _HudScreenState extends State<HudScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.8)),
-        color: Colors.black.withValues(alpha: 0.7),
+        border: Border.all(color: AppColors.orange),
+        color: AppColors.background.withValues(alpha: 0.9),
       ),
-      child: const Text(
+      child: Text(
         'REAR-FACING',
-        style: TextStyle(
-          color: Colors.amber,
-          fontFamily: 'SpaceMono',
+        style: AppTextStyles.technicalLabel.copyWith(
+          color: AppColors.orange,
           fontSize: 10,
           fontWeight: FontWeight.bold,
-          letterSpacing: 2,
         ),
       ),
     );
@@ -381,26 +372,15 @@ class _HudScreenState extends State<HudScreen>
 
   // ── Launch button ─────────────────────────────────────────────────────────
 
-  Widget _buildLaunchButton(GameState gameState) {
+  Widget _buildLaunchButton(BuildContext context, GameState gameState) {
     return Center(
-      child: GestureDetector(
-        onTap: () => _startChallenge(gameState),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: kTacticalGreen, width: 2),
-            color: Colors.black.withValues(alpha: 0.7),
-          ),
-          child: const Text(
-            'START SPIT',
-            style: TextStyle(
-              color: kTacticalGreen,
-              fontFamily: 'SpaceMono',
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-            ),
-          ),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 320),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: AppTacticalButton(
+          label: 'START SPIT',
+          onPressed: () => _startChallenge(gameState),
+          filled: true,
         ),
       ),
     );
@@ -466,13 +446,80 @@ class _HudScreenState extends State<HudScreen>
     return 'NW';
   }
 
-  Widget _hudText(String text) => Text(
+  Widget _hudText(String text, {double? fontSize}) => Text(
         text,
-        style: const TextStyle(
-          color: kTacticalGreen,
-          fontFamily: 'SpaceMono',
-          fontSize: 11,
+        style: AppTextStyles.technicalLabel.copyWith(
+          color: AppColors.black,
+          fontSize: fontSize ?? 11,
           letterSpacing: 1.0,
         ),
       );
+
+  // ── Dynamic overlay positioning (SAFE-AREA aware) ─────────────────────────
+  // Replaces the old Positioned(top: 80/120/160) hardcoded magic numbers.
+  // We base positions on the status bar height reported by MediaQuery.
+
+  Widget _buildOverlayIndicators(
+    BuildContext context,
+    NormalizedTelemetry telemetry,
+    GameState gameState,
+  ) {
+    final double topBase = MediaQuery.paddingOf(context).top;
+    // Top bar height is approx. topPad + 8 + 20 (two lines of text)
+    final double barBottom = topBase + 40;
+    const double itemHeight = 36.0;
+    const double itemRight = 12.0;
+
+    int slotIndex = 0;
+    double nextTop() {
+      final top = barBottom + slotIndex * itemHeight;
+      slotIndex++;
+      return top;
+    }
+
+    final widgets = <Widget>[];
+
+    if (telemetry.isDemoMode) {
+      final top = nextTop();
+      widgets.add(Positioned(
+        top: top,
+        right: itemRight,
+        child: _buildDemoModeIndicator(),
+      ));
+    }
+
+    if (gameState.isFacingBackwards) {
+      final top = nextTop();
+      widgets.add(Positioned(
+        top: top,
+        right: itemRight,
+        child: _buildRearFacingIndicator(),
+      ));
+    }
+
+    {
+      final top = nextTop();
+      widgets.add(Positioned(
+        top: top,
+        right: itemRight - 4, // icon button has built-in padding
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.background.withValues(alpha: 0.9),
+            border: AppBorders.defaultBorder,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.flip_camera_ios, color: AppColors.black),
+            onPressed: _toggleCamera,
+            tooltip: 'Switch Camera',
+            iconSize: 22,
+            padding: const EdgeInsets.all(8),
+            constraints: const BoxConstraints(),
+          ),
+        ),
+      ));
+    }
+
+    return Stack(children: widgets);
+  }
 }

@@ -2,11 +2,13 @@
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class StaticHeadGuidePainter extends CustomPainter {
   final Color color;
 
   StaticHeadGuidePainter({
-    this.color = const Color(0xFF39FF14), // Tactical green default
+    this.color = AppColors.acidGreen, // Tactical green default
   });
 
   @override
@@ -34,7 +36,8 @@ class StaticHeadGuidePainter extends CustomPainter {
     canvas.drawOval(ovalRect, borderPaint);
     
     // Corner marks for the face bounding box
-    final double cornerLength = 20.0;
+    // FIXED: was hardcoded 20.0 — now proportional to canvas width (~5%)
+    final double cornerLength = size.width * 0.05;
     final Paint cornerPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -59,12 +62,10 @@ class StaticHeadGuidePainter extends CustomPainter {
     // Text guidance
     final textSpan = TextSpan(
       text: 'ALIGN HEAD HERE',
-      style: TextStyle(
+      style: AppTextStyles.technicalLabel.copyWith(
         color: color.withValues(alpha: 0.7),
-        fontFamily: 'SpaceMono',
-        fontSize: 12,
-        letterSpacing: 2,
-        fontWeight: FontWeight.bold,
+        // FIXED: was hardcoded 12 — now proportional to canvas width (~3%)
+        fontSize: (size.width * 0.03).clamp(10.0, 16.0),
       ),
     );
     final textPainter = TextPainter(

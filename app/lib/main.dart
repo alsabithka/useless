@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 
 import 'package:camera/camera.dart';
 
+import 'theme/app_theme.dart';
+
 import 'game/game_state.dart';
 import 'hud/hud_screen.dart';
 import 'hud/permission_gate.dart';
@@ -37,9 +39,13 @@ void main() async {
   final playerService = PlayerService();
   await playerService.initialize();
 
-  // Lock to portrait orientation for the HUD experience
+  // Allow all orientations — layouts are responsive per-screen.
+  // (HUD screen stays full-bleed on all sizes; other screens adapt.)
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
   ]);
 
   // Full-screen immersive mode — tactical aesthetic
@@ -71,16 +77,11 @@ class SafeSpitApp extends StatelessWidget {
       child: MaterialApp(
         title: 'SAFE//SPIT',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: Colors.black,
-          fontFamily: 'SpaceMono',
-          colorScheme: const ColorScheme.dark(
-            primary: Color(0xFF39FF14),
-            secondary: Color(0xFF39FF14),
-            surface: Colors.black,
-          ),
-        ),
+        theme: AppTheme.themeData,
+        // Dark theme used only by HUD/PermissionGate — they set their
+        // own scaffold background to Colors.black explicitly.
+        darkTheme: AppTheme.themeData,
+        themeMode: ThemeMode.light,
         home: const SafeSpitRouter(),
         // Named routes for navigation
         routes: {
