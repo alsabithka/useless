@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import gsap from 'gsap';
 import { Draggable } from 'gsap/Draggable';
 
@@ -83,7 +83,7 @@ export const JournalSection: React.FC = () => {
 
   // Magnetic Button Effect
   useEffect(() => {
-    const attachMagnetic = (ref: React.RefObject<HTMLButtonElement>) => {
+    const attachMagnetic = (ref: React.RefObject<HTMLButtonElement | null>) => {
       if (!ref.current) return;
       const btn = ref.current;
       const xTo = gsap.quickTo(btn, "x", { duration: 0.4, ease: "power3" });
@@ -358,7 +358,7 @@ export const JournalSection: React.FC = () => {
             }}>
               {entry.mediaType === 'video' ? (
                 <video 
-                  ref={el => videoRefs.current[idx] = el}
+                  ref={(el) => { videoRefs.current[idx] = el; }}
                   poster={entry.poster}
                   muted 
                   loop 

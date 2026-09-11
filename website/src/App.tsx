@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { SiteShell } from './components/SiteShell';
 import { PersistentNav } from './components/PersistentNav';
 import { HeroSequence } from './components/HeroSequence';
