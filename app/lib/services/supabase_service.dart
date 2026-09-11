@@ -26,19 +26,10 @@ class SupabaseService {
     }
   }
 
-  Future<void> submit(ScoreRecord record) async {
+  Future<void> submit(ScoreRecord record, String playerId) async {
     if (!await initialize()) throw StateError('Supabase is not configured');
     final client = Supabase.instance.client;
-    final session = client.auth.currentSession ??
-        (await client.auth.signInAnonymously()).session;
-    final playerId = session?.user.id;
-    if (playerId == null) throw StateError('Anonymous sign-in failed');
 
-    await client.from('players').upsert({
-      'id': playerId,
-      'display_name': 'PLAYER',
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    });
     await client.from('scores').insert({
       'player_id': playerId,
       'score': record.score,

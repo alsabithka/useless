@@ -23,12 +23,13 @@ class ScoreRecord {
     required ChallengeResult result,
     required String seed,
     required String mode,
+    required int physicsPoints,
   }) {
     return ScoreRecord(
       id: '${DateTime.now().microsecondsSinceEpoch}-$seed',
       seed: seed,
       mode: mode,
-      score: result.score.clamp(0.0, 1.0),
+      score: (physicsPoints * result.score).toDouble(),
       confidence: result.confidence.clamp(0.0, 1.0),
       eventDetected: result.hasEvent,
       createdAt: DateTime.now().toUtc(),

@@ -14,6 +14,7 @@ import '../sensors/sensor_manager.dart';
 import '../sensors/demo_mode_source.dart';
 import '../challenge/challenge_state.dart';
 import '../services/score_persistence_service.dart';
+import '../services/player_service.dart';
 import 'dart:async';
 import 'spit_lock_controller.dart';
 
@@ -62,9 +63,15 @@ class GameState extends ChangeNotifier {
   ScoreBreakdown? get finalScore => _finalScore;
   ChallengeResult? _challengeResult;
   ChallengeResult? get challengeResult => _challengeResult;
-  final ScorePersistenceService _scorePersistence = ScorePersistenceService();
+  late final ScorePersistenceService _scorePersistence;
   ScoreSyncState? _scoreSyncState;
   ScoreSyncState? get scoreSyncState => _scoreSyncState;
+
+  final PlayerService playerService;
+
+  GameState({required this.playerService}) {
+    _scorePersistence = ScorePersistenceService(playerService: playerService);
+  }
 
   void clearChallengeSnapshot() {
     final result = _challengeResult;
@@ -192,6 +199,7 @@ class GameState extends ChangeNotifier {
       result: result,
       seed: _seed,
       mode: _mode,
+      physicsPoints: _finalScore?.total ?? 0,
     );
     notifyListeners();
   }

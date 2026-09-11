@@ -220,6 +220,19 @@ class _PermissionGateState extends State<PermissionGate> {
                       letterSpacing: 1,
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.person),
+                        color: kTacticalGreen.withValues(alpha: 0.7),
+                        onPressed: () => Navigator.pushNamed(context, '/profile'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

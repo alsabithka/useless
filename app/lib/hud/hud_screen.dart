@@ -475,19 +475,4 @@ class _HudScreenState extends State<HudScreen>
           letterSpacing: 1.0,
         ),
       );
-
-  TextStyle _bigHudStyle({double size = 22}) => TextStyle(
-        color: kTacticalGreen,
-        fontFamily: 'SpaceMono',
-        fontSize: size,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 3,
-      );
-
-  TextStyle _smallHudStyle() => const TextStyle(
-        color: kTacticalGreen,
-        fontFamily: 'SpaceMono',
-        fontSize: 13,
-        letterSpacing: 1.5,
-      );
 }

@@ -25,7 +25,7 @@ class StaticHeadGuidePainter extends CustomPainter {
     );
 
     final Paint borderPaint = Paint()
-      ..color = color.withOpacity(0.6)
+      ..color = color.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -60,7 +60,7 @@ class StaticHeadGuidePainter extends CustomPainter {
     final textSpan = TextSpan(
       text: 'ALIGN HEAD HERE',
       style: TextStyle(
-        color: color.withOpacity(0.7),
+        color: color.withValues(alpha: 0.7),
         fontFamily: 'SpaceMono',
         fontSize: 12,
         letterSpacing: 2,

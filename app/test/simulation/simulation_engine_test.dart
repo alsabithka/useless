@@ -10,7 +10,7 @@ import 'package:safespit/simulation/scenario.dart';
 void main() {
   group('SimulationEngine — test vectors', () {
     // Helper to create a Car scenario
-    ScenarioInput _carScenario({
+    ScenarioInput carScenario({
       required String seed,
       required double speedKmh,
       required double pitchDeg,
@@ -29,7 +29,7 @@ void main() {
     }
 
     test('0 km/h → targetPitch=0.0, locked', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
             seed: '000000', speedKmh: 0.0, pitchDeg: 0.0));
           expect(result.targetPitchDeg, closeTo(0.0, 1e-6));
       expect(result.deltaDeg, closeTo(0.0, 1e-6));
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('10 km/h → targetPitch=45.0, locked', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
             seed: '000001', speedKmh: 10.0, pitchDeg: 45.0));
           expect(result.targetPitchDeg, closeTo(45.0, 1e-6));
       expect(result.deltaDeg, closeTo(0.0, 1e-6));
@@ -45,7 +45,7 @@ void main() {
     });
 
     test('20 km/h → targetPitch=90.0 (clamp), locked', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
             seed: '000002', speedKmh: 20.0, pitchDeg: 90.0));
           expect(result.targetPitchDeg, closeTo(90.0, 1e-6));
       expect(result.isClearToEject, isTrue);
@@ -53,7 +53,7 @@ void main() {
 
     // TV-04
     test('TV-04: deltaDeg=4.9 → isClearToEject=true', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
             seed: '000003', speedKmh: 10.0, pitchDeg: 40.1));
           expect(result.targetPitchDeg, closeTo(45.0, 1e-6));
           expect(result.deltaDeg, closeTo(4.9, 1e-6));
@@ -62,7 +62,7 @@ void main() {
 
     // TV-05
     test('TV-05: deltaDeg=5.0 → isClearToEject=true (inclusive)', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
           seed: '000004', speedKmh: 10.0, pitchDeg: 40.0));
       expect(result.deltaDeg, closeTo(5.0, 1e-6));
       expect(result.isClearToEject, isTrue);
@@ -70,30 +70,30 @@ void main() {
 
     // TV-06
     test('TV-06: deltaDeg=5.1 → isClearToEject=false', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
           seed: '000005', speedKmh: 10.0, pitchDeg: 39.9));
       expect(result.deltaDeg, closeTo(5.1, 1e-6));
       expect(result.isClearToEject, isFalse);
     });
 
     test('negative speed clamped to 0 → targetPitch=0.0', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
             seed: '000006', speedKmh: -10.0, pitchDeg: 0.0));
           expect(result.targetPitchDeg, closeTo(0.0, 1e-6));
       expect(result.isClearToEject, isTrue);
     });
 
     test('20 km/h target remains capped at 90 degrees', () {
-      final result = simulate(_carScenario(
+      final result = simulate(carScenario(
             seed: '000007', speedKmh: 100.0, pitchDeg: 90.0));
           expect(result.targetPitchDeg, closeTo(90.0, 1e-6));
     });
 
     // TV-09: Wind does NOT affect targetPitch
     test('TV-09: wind does not affect targetPitchDeg (Rule 15, D-5)', () {
-      final noWind = simulate(_carScenario(
+      final noWind = simulate(carScenario(
           seed: '000001', speedKmh: 50.0, pitchDeg: 70.0));
-      final withWind = simulate(_carScenario(
+      final withWind = simulate(carScenario(
           seed: '000008',
           speedKmh: 50.0,
           pitchDeg: 70.0,
