@@ -32,7 +32,7 @@ For Software:
 - **Languages used**: Dart
 - **Frameworks used**: Flutter
 - **Libraries used**: `sensors_plus` (for raw hardware telemetry), `geolocator` (for GPS speed), `audioplayers`, `haptic_feedback`, `camera`, `supabase_flutter`, `provider`.
-- **Tools used**: Git, Antigravity IDE, VS Code, Supabase (for anonymous auth & profile sync).
+- **Tools used**: Git, Antigravity IDE, VS Code.
 
 ### Implementation
 For Software:
@@ -51,9 +51,10 @@ flutter pub get
 # Run
 ```bash
 # Run on a connected physical device (required for GPS/Gyroscope)
-# Pass your Supabase credentials via --dart-define to keep secrets out of source code
-flutter run --dart-define="SUPABASE_URL=your-url" --dart-define="SUPABASE_ANON_KEY=your-key"
+flutter run
 ```
+
+> **Note:** The app runs fully offline. All scores and profile data are stored locally on-device. No backend or environment variables are required.
 
 ### Project Documentation
 For Software:
