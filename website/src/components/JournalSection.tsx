@@ -20,38 +20,92 @@ interface JournalEntry {
 const journalData: JournalEntry[] = [
   {
     id: "01",
-    title: "INITIAL SPIT",
-    blurb: "We pushed the first build. The rejection came back faster than expected. Immediate calculation of spite levels commenced.",
-    mediaType: "video",
-    mediaSrc: "https://videos.pexels.com/video-files/3129957/3129957-uhd_2560_1440_25fps.mp4",
-    poster: "https://images.pexels.com/photos/3129957/pexels-photo-3129957.jpeg?auto=compress&cs=tinysrgb&w=800",
-    alt: "Abstract coding visual"
+    title: "JUST STARTED",
+    blurb: "Just started the project without knowing anything wooh woohhhh",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image1.png",
+    alt: "Project kickoff screenshot"
   },
   {
     id: "02",
-    title: "RECALIBRATION",
-    blurb: "Wind resistance models failed. The trajectory of our return was suboptimal. We doubled the gravity coefficient to ensure impact.",
+    title: "RUNNING COOL SHITS",
+    blurb: "Running some cool shits",
     mediaType: "image",
-    mediaSrc: "https://images.pexels.com/photos/1089438/pexels-photo-1089438.jpeg?auto=compress&cs=tinysrgb&w=800",
-    alt: "Servers and cables in red light"
+    mediaSrc: "/useless/journal/image2.png",
+    alt: "Running something cool"
   },
   {
     id: "03",
-    title: "MAXIMUM SPITE",
-    blurb: "All sliders maxed. Target acquired. The UI is completely brutalist to reflect our current emotional state.",
-    mediaType: "video",
-    mediaSrc: "https://videos.pexels.com/video-files/2278095/2278095-uhd_2560_1440_24fps.mp4",
-    poster: "https://images.pexels.com/photos/2278095/pexels-photo-2278095.jpeg?auto=compress&cs=tinysrgb&w=800",
-    alt: "Digital matrix code falling"
+    title: "FULL TRAGDYY",
+    blurb: "Full tragdyy analloooooo",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image3.png",
+    alt: "Full tragedy"
   },
   {
     id: "04",
-    title: "DEPLOYMENT",
-    blurb: "V1.0 is live. No takesies backsies. The leaderboard is already filling with petty competitors. Excellent.",
+    title: "AGAIN PANI PALLI",
+    blurb: "Again pani palli guysssss",
     mediaType: "image",
-    mediaSrc: "https://images.pexels.com/photos/2582937/pexels-photo-2582937.jpeg?auto=compress&cs=tinysrgb&w=800",
-    alt: "Neon sign error"
-  }
+    mediaSrc: "/useless/journal/image4.png",
+    alt: "Again doing it"
+  },
+  {
+    id: "05",
+    title: "THE LOOP",
+    blurb: "Doing and undoing reset to og — what the heck it's a loop",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image5.png",
+    alt: "Doing and undoing in a loop"
+  },
+  {
+    id: "06",
+    title: "OVAL HEAD",
+    blurb: "Just try something new — removing the whole vehicle system and adding an oval for head placements",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image6.png",
+    alt: "Oval head placement experiment"
+  },
+  {
+    id: "07",
+    title: "BUG MATRAM",
+    blurb: "Buggode bug matram but ever failed ever win ennalle — lets give it a shot",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image7.png",
+    alt: "Debugging session"
+  },
+  {
+    id: "08",
+    title: "VS CODE ESCAPE",
+    blurb: "Just switched to VS Code — the Antigravity sucks so much",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image8.png",
+    alt: "Switched to VS Code"
+  },
+  {
+    id: "09",
+    title: "SUPA BASEEEEE",
+    blurb: "Returned to Antigravity and set upping the Supa Baseeeee",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image9.png",
+    alt: "Supabase setup"
+  },
+  {
+    id: "10",
+    title: "JWT CHAOS",
+    blurb: "We made JWT — a fun implementation where any person with the same name accesses the same data. Typically useless.",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image10.png",
+    alt: "JWT implementation"
+  },
+  {
+    id: "11",
+    title: "LANDING PAGE",
+    blurb: "Built the landing page and a dummy journey — it was a bit of a work",
+    mediaType: "image",
+    mediaSrc: "/useless/journal/image11.png",
+    alt: "Landing page built"
+  },
 ];
 
 export const JournalSection: React.FC = () => {
