@@ -23,25 +23,26 @@ Featuring the proprietary **Direct Hit Protocol**, our physics engine inverted s
 ### Features
 * **Direct Hit Protocol:** The physics engine ensures you will always find the perfect angle to hit yourself.
 * **Vertical Anti-Gravity Calculations:** Stand still or walk and the HUD locks onto 180° for the perfect vertical self-splatter.
-* **Classified AR Targeting Prototype (Suspended):** We previously explored a fully projected 3D spit-arc simulation in Augmented Reality. Due to excessive realism and safety concerns of rendering fluids in the living room, this module has been temporarily suspended (but the code remains untouched for the brave).
+* **Fake AR Targeting:** A fully projected impact-point simulation overlaid on the live camera feed, showing exactly where the spit will land in the real world.
+* **Personal Mission Log:** Your score history is stored locally — review every failed and successful ejection attempt from the Profile screen.
 
 ## Technical Details
 ### Technologies/Components Used
 For Software:
 - **Languages used**: Dart
 - **Frameworks used**: Flutter
-- **Libraries used**: `sensors_plus` (for raw hardware telemetry), `geolocator` (for GPS speed), `audioplayers`, `haptic_feedback`.
-- **Tools used**: Git, Gemini (for generating our sleek aerospace UI assets), Supabase (for backend leaderboard architecture).
+- **Libraries used**: `sensors_plus` (for raw hardware telemetry), `geolocator` (for GPS speed), `audioplayers`, `haptic_feedback`, `camera`, `supabase_flutter`, `provider`.
+- **Tools used**: Git, Antigravity IDE, VS Code, Supabase (for anonymous auth & profile sync).
 
 ### Implementation
 For Software:
 # Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/safespit.git
+git clone https://github.com/alsabithka/useless.git
 
 # Enter the application directory
-cd safespit/app
+cd useless/app
 
 # Install dependencies
 flutter pub get
@@ -50,7 +51,8 @@ flutter pub get
 # Run
 ```bash
 # Run on a connected physical device (required for GPS/Gyroscope)
-flutter run --release
+# Pass your Supabase credentials via --dart-define to keep secrets out of source code
+flutter run --dart-define="SUPABASE_URL=your-url" --dart-define="SUPABASE_ANON_KEY=your-key"
 ```
 
 ### Project Documentation
@@ -64,7 +66,7 @@ For Software:
 *Demo mode generating synthetic telemetry for indoor pitch testing.*
 
 ![Screenshot3](docs/screenshot_3.jpg)
-*Spit Olympics multiplayer leaderboard showcasing peak aerodynamic performances.*
+*Profile screen showing the user's personal mission history and scores.*
 
 # Diagrams
 ![Workflow](docs/architecture_diagram.png)
@@ -76,12 +78,11 @@ For Software:
 *A real-world test demonstrating the transition from SEARCHING to SPIT LOCK using live vehicular speed and pitch matching.*
 
 # Additional Demos
-[Add any extra demo materials/links]
+[Live website → https://alsabithka.github.io/useless/]
 
 ## Team Contributions
-- [Name 1]: Flutter HUD design, custom painter logic, and core UI mechanics.
-- [Name 2]: Hardware telemetry integration, GPS speed mapping, and gyroscope normalization.
-- [Name 3]: Deterministic ballistic physics modeling and Supabase integration.
+- Alsabith KA: Flutter HUD design, custom painter logic, core UI mechanics, Supabase integration & anonymous auth, website frontend.
+- Harsh C Hari: Hardware telemetry integration, GPS speed mapping, gyroscope normalization, deterministic ballistic physics modelling.
 
 ---
 Made with ❤️ at TinkerHub Useless Projects 
