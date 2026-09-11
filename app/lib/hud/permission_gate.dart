@@ -13,8 +13,6 @@ import 'package:provider/provider.dart';
 
 import '../game/game_state.dart';
 import '../hud/missile_lock_reticle_painter.dart';
-import '../sensors/sensor_manager.dart';
-import '../sensors/demo_mode_source.dart';
 
 /// The permission gate screen.
 ///
@@ -207,9 +205,6 @@ class _PermissionGateState extends State<PermissionGate> {
                       onTap: _enterDemoMode,
                       filled: false,
                     ),
-
-                    const SizedBox(height: 12),
-
 
                   ],
 

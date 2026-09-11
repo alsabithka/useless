@@ -5,6 +5,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:safespit/game/spit_lock_controller.dart';
+import 'package:safespit/simulation/simulation_engine.dart';
 import 'package:safespit/simulation/scenario.dart';
 
 SimulationResult _makeResult({required bool locked, double delta = 0.0}) {

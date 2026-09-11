@@ -1,5 +1,18 @@
 # safespit
 
+## Score persistence
+
+Completed challenge scores are always saved locally first. To enable Supabase
+sync, run the SQL migration at `backend/migrations/001_scores.sql` in the
+Supabase SQL editor, enable anonymous authentication, and build with:
+
+`flutter run -d RZCW310M0ZR --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=YOUR_KEY`
+
+The publishable key is safe to use in a client app with the RLS policies from
+the migration. Never use a Supabase `service_role` key in Flutter. Without
+these defines, scores remain in the local offline queue and the game remains
+fully usable.
+
 A new Flutter project.
 
 ## Getting Started

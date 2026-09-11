@@ -16,8 +16,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show debugPrint;
-
 import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -47,6 +45,7 @@ class SensorManager {
   SensorHealthStatus _gyroHealth = SensorHealthStatus.permissionDenied;
 
   StreamSubscription<Position>? _gpsSubscription;
+  StreamSubscription<AccelerometerEvent>? _accelSubscription;
   StreamSubscription<CompassEvent>? _compassSubscription;
 
   final StreamController<NormalizedTelemetry> _controller =
@@ -65,7 +64,7 @@ class SensorManager {
 
   void dispose() {
     _gpsSubscription?.cancel();
-    _orientationSubscription?.cancel();
+    _accelSubscription?.cancel();
     _compassSubscription?.cancel();
     _controller.close();
   }
@@ -117,63 +116,33 @@ class SensorManager {
     }
   }
 
-  // ── STABLE: Absolute orientation pipeline (hardware rotation vector) ──────
-  //
-  // Uses sensors_plus absoluteOrientationStream which fuses accel + gyro +
-  // magnetometer at the OS level (Android TYPE_ROTATION_VECTOR).
-  // This gives drift-free, jitter-free absolute pitch with no manual atan2.
-  //
-  // Convention after conversion:
-  //   0°   = camera pointing at sky   (phone face-down)
-  //   90°  = camera at horizon        (phone upright portrait)
-  //   180° = camera pointing at ground (phone face-up)
-  //
-  // Additionally: if pitch lands within 5° of either flat extreme (0° or 180°)
-  // it is snapped to 90° so the HUD always guides the user toward upward aim.
+  // ── SENSOR: Accelerometer orientation pipeline (Drift-free) ───────────────
 
-  bool _pitchInitialised = false;
-  StreamSubscription<AbsoluteOrientationEvent>? _orientationSubscription;
+  double _gravityX = 0.0;
+  double _gravityY = 0.0;
+  double _gravityZ = 0.0;
 
   Future<void> _startAccel() async {
     _gyroHealth = SensorHealthStatus.degraded;
     _emit();
 
     try {
-      _orientationSubscription = absoluteOrientationEventStream().listen(
-        (AbsoluteOrientationEvent event) {
-          // event.pitch: radians, range [-π/2, +π/2]
-          //   +π/2 ≈ +90°  = phone face-up (screen towards sky)
-          //   0            = phone upright portrait
-          //   -π/2 ≈ -90°  = phone face-down (screen towards ground)
-          //
-          // Convert to app convention (0=camera-at-sky, 90=horizon, 180=ground):
-          //   raw_deg = event.pitch * 180/π          → [-90°, +90°]
-          //   app_pitch = 90° - raw_deg              → [0°, 180°]
-          //     face-up   (+90°) → 90-90 = 0°   (camera at sky)   ✓
-          //     portrait  (  0°) → 90-0  = 90°  (camera at horizon) ✓
-          //     face-down (-90°) → 90+90 = 180° (camera at ground) ✓
-          final double rawDeg  = event.pitch * (180.0 / math.pi);
-          double newPitch = (90.0 - rawDeg).clamp(0.0, 180.0);
+      // Replace gyro with accelerometer for absolute orientation.
+      _accelSubscription = accelerometerEventStream().listen(
+        (AccelerometerEvent event) {
+          // Low-pass filter to smooth out all jitter (alpha = 0.1 means 90% previous value, 10% new value)
+          const double alpha = 0.1;
+          _gravityX = alpha * event.x + (1 - alpha) * _gravityX;
+          _gravityY = alpha * event.y + (1 - alpha) * _gravityY;
+          _gravityZ = alpha * event.z + (1 - alpha) * _gravityZ;
 
-          // ── Flat-position snap ─────────────────────────────────────────
-          // When phone is nearly flat (≤5° or ≥175°), the direction of "up"
-          // along the phone's face is ambiguous. Snap to 90° (portrait / horizon)
-          // so the HUD always guides the user to aim upward rather than locking
-          // on an indeterminate flat position.
-          if (newPitch <= 5.0 || newPitch >= 175.0) {
-            newPitch = 90.0;
-          }
-
-          // ── Initialise from first reading instead of defaulting to 45° ──
-          if (!_pitchInitialised) {
-            _pitchDeg = newPitch;
-            _pitchInitialised = true;
-          } else {
-            // ── Deadband: ignore sub-0.5° jitter ──────────────────────────
-            if ((newPitch - _pitchDeg).abs() >= 0.5) {
-              _pitchDeg = newPitch;
-            }
-          }
+          // Pitch: Flat face up (Z=9.8, Y=0) is 180. Upright portrait (Z=0, Y=9.8) is 90. Flat face down (Z=-9.8, Y=0) is 0.
+          _pitchDeg = math.atan2(_gravityZ, _gravityY) * (180.0 / math.pi) + 90.0;
+          _pitchDeg = _pitchDeg.clamp(0.0, 180.0);
+          
+          // Roll: rotation left/right. 0 is perfectly level left-to-right.
+          _rollDeg = math.atan2(_gravityX, _gravityZ) * (180.0 / math.pi);
+          _rollDeg = _rollDeg.clamp(-180.0, 180.0);
 
           _gyroHealth = SensorHealthStatus.ok;
           _emit();
@@ -182,7 +151,7 @@ class SensorManager {
           _gyroHealth = SensorHealthStatus.degraded;
           _emit();
         },
-        cancelOnError: false,
+        cancelOnError: false, // PROVEN
         onDone: () {
           _gyroHealth = SensorHealthStatus.unavailable;
           _emit();
@@ -224,33 +193,17 @@ class SensorManager {
   }
 
   // ── Telemetry emission ────────────────────────────────────────────────────
-  //
-  // COORDINATE SYSTEM — VERIFIED FROM DEBUG LOGS
-  // ─────────────────────────────────────────────────────────────────────────
-  // The accelerometer formula:
-  //   atan2(Z, Y)*180/π + 90
-  //   →  0°   = phone face-DOWN  (back camera pointing UP / at sky)  ← target=0°
-  //   → 90°   = phone upright portrait (back camera at horizon)       ← target=90°
-  //   → 180°  = phone face-UP   (back camera pointing at ground)
-  //
-  // Physics engine uses same convention: 0=camera-at-sky, 90=horizontal.
-  // NO CONVERSION NEEDED — pass raw pitch directly.
-  // ─────────────────────────────────────────────────────────────────────────
 
   void _emit() {
     if (_controller.isClosed) return;
-
-    // ── DEBUG: verify pitch vs target ───────────────────────────────────
-    // Remove once lock is confirmed working.
-    debugPrint('[PITCH] raw=${_pitchDeg.toStringAsFixed(1)}°');
-
+    
     _controller.add(NormalizedTelemetry(
       speedKmh: _speedKmh,
-      pitchDeg: _pitchDeg,            // raw = physics convention already
+      pitchDeg: _pitchDeg,
       rollDeg: _rollDeg,
       yawDeg: _compassHeading ?? 0.0,
-      headingDeg: _gpsHeading,
-      anchorCompassHeading: _anchorCompassHeading,
+      headingDeg: _gpsHeading, // Real GPS heading (null if never moved)
+      anchorCompassHeading: _anchorCompassHeading, // Compass heading when stopped
       timestamp: DateTime.now(),
       sensorHealth: SensorHealth(
         gps: _gpsHealth,
@@ -261,5 +214,3 @@ class SensorManager {
     ));
   }
 }
-
-

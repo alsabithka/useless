@@ -1,4 +1,4 @@
-﻿// result_screen.dart — SAFE//SPIT
+// result_screen.dart � SAFE//SPIT
 //
 // PLANNED: Dedicated result screen (Phase 9).
 // Shows score breakdown, letter grade, mission metadata, and
@@ -9,8 +9,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 
 import '../game/game_state.dart';
+import '../challenge/challenge_state.dart';
+import '../services/score_persistence_service.dart';
 import '../simulation/scenario.dart';
 
 const Color _kGreen = Color(0xFF39FF14);
@@ -79,6 +82,10 @@ class ResultScreen extends StatelessWidget {
                       children: [
                         _buildHeader(isDemoMode),
                         const SizedBox(height: 24),
+                        if (gameState.challengeResult != null)
+                          _buildChallengeResult(context, gameState),
+                        if (gameState.challengeResult != null)
+                          const SizedBox(height: 24),
                         _buildGradeBadge(grade, gradeColor, score.total),
                         const SizedBox(height: 28),
                         _buildBreakdown(score),
@@ -145,6 +152,98 @@ class ResultScreen extends StatelessWidget {
       _mono(_gradeLabel(grade), size: 11, alpha: 0.6),
     ],
   );
+
+  Widget _buildChallengeResult(BuildContext context, GameState gameState) {
+    final result = gameState.challengeResult!;
+    final eventText = switch (result.eventState) {
+      EventDetectionState.eventDetected => 'EVENT DETECTED',
+      EventDetectionState.lowConfidence => 'LOW CONFIDENCE',
+      EventDetectionState.noEvent => 'NO EVENT DETECTED',
+    };
+    final snapshotPath = result.snapshotPath;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: _kGreen.withValues(alpha: 0.35)),
+        color: Colors.black.withValues(alpha: 0.35),
+      ),
+      child: Column(
+        children: [
+          _mono('CHALLENGE COMPLETE', size: 14),
+          const SizedBox(height: 12),
+          Text(
+            '${result.score.toStringAsFixed(2)} / 1.00',
+            style: const TextStyle(
+              color: _kGreen,
+              fontFamily: 'SpaceMono',
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _mono(eventText, size: 12),
+          const SizedBox(height: 4),
+          _mono('CONFIDENCE: ${(result.confidence * 100).round()}%', size: 11, alpha: 0.65),
+          if (gameState.scoreSyncState != null) ...[
+            const SizedBox(height: 6),
+            _mono(_syncLabel(gameState.scoreSyncState!), size: 10, alpha: 0.6),
+          ],
+          if (snapshotPath != null) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: _btn('VIEW SNAPSHOT', filled: false, onTap: () => _showSnapshot(context, snapshotPath)),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: _btn('DELETE SNAPSHOT', filled: false, onTap: () => _deleteSnapshot(context, gameState, snapshotPath)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _syncLabel(ScoreSyncState state) {
+    switch (state) {
+      case ScoreSyncState.synced:
+        return 'SCORE SYNCED';
+      case ScoreSyncState.pending:
+        return 'SCORE SAVED - SYNCING LATER';
+      case ScoreSyncState.savedLocally:
+        return 'SCORE SAVED LOCALLY';
+    }
+  }
+
+  void _showSnapshot(BuildContext context, String path) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        child: Image.file(File(path), fit: BoxFit.contain),
+      ),
+    );
+  }
+
+  Future<void> _deleteSnapshot(BuildContext context, GameState gameState, String path) async {
+    try {
+      await File(path).delete();
+      gameState.clearChallengeSnapshot();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SNAPSHOT DELETED')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('COULD NOT DELETE SNAPSHOT')),
+        );
+      }
+    }
+  }
 
   Widget _buildBreakdown(ScoreBreakdown score) => Container(
     decoration: BoxDecoration(border: Border.all(color: _kGreen.withValues(alpha: 0.25))),
@@ -236,11 +335,11 @@ class ResultScreen extends StatelessWidget {
     child: Column(
       children: [
         _metaRow('SEED',    gameState.seed),
-
         _metaRow('MODE',    gameState.mode.toUpperCase()),
       ],
     ),
   );
+
 
   Widget _metaRow(String key, String value) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),

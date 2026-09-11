@@ -10,6 +10,7 @@
 // RULE 8: "DEMO MODE" text is always visible when isDemoMode is true.
 
 import 'dart:async';
+import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,9 +20,10 @@ import '../game/spit_lock_controller.dart';
 import '../sensors/normalized_telemetry.dart';
 import '../simulation/scenario.dart';
 import '../simulation/trajectory_model.dart';
-import '../simulation/safe_spit_calculator.dart';
 import '../services/audio_service.dart';
 import '../services/haptic_service.dart';
+import '../challenge/challenge_controller.dart';
+import '../challenge/challenge_state.dart';
 import 'missile_lock_reticle_painter.dart';
 import 'static_head_guide_painter.dart';
 
@@ -47,6 +49,8 @@ class _HudScreenState extends State<HudScreen>
 
   final AudioService _audio = AudioService();
   final HapticService _haptic = HapticService();
+  final ChallengeController _challengeController = ChallengeController();
+  ChallengeState _challengeState = ChallengeState.ready;
 
   @override
   void initState() {
@@ -66,11 +70,9 @@ class _HudScreenState extends State<HudScreen>
     _lockTransitionSub = gameState.lockController.onTransition.listen(
       (transition) async {
         if (transition.isLockAcquired) {
-          // Rule 10: Fire ONCE on false→true edge only.
           await _audio.playLockTone();
           await _haptic.onLockAcquired();
         } else if (transition.isLockLost) {
-          // A-tier: optional lost-lock cue
           await _haptic.onLockLost();
         }
       },
@@ -87,16 +89,12 @@ class _HudScreenState extends State<HudScreen>
       await _setCamera(_selectedCameraIndex);
     } catch (e) {
       debugPrint('[HudScreen] Camera init error: $e');
-      if (mounted) {
-        setState(() => _cameraError = true);
-      }
+      if (mounted) setState(() => _cameraError = true);
     }
   }
 
   Future<void> _setCamera(int index) async {
-    if (_cameraController != null) {
-      await _cameraController!.dispose();
-    }
+    await _cameraController?.dispose();
     _cameraController = CameraController(
       _cameras[index],
       ResolutionPreset.high,
@@ -111,17 +109,14 @@ class _HudScreenState extends State<HudScreen>
         });
       }
     } catch (e) {
-      debugPrint('[HudScreen] Camera error: $e'); // PROVEN debug string pattern
-      if (mounted) {
-        setState(() => _cameraError = true);
-      }
+      debugPrint('[HudScreen] Camera error: $e');
+      if (mounted) setState(() => _cameraError = true);
     }
   }
 
   void _toggleCamera() {
     if (_cameras.isEmpty) return;
-    final nextIndex = (_selectedCameraIndex + 1) % _cameras.length;
-    _setCamera(nextIndex);
+    _setCamera((_selectedCameraIndex + 1) % _cameras.length);
   }
 
   @override
@@ -143,8 +138,6 @@ class _HudScreenState extends State<HudScreen>
           final simResult = gameState.simResult;
           final lockState = gameState.lockController.state;
           final lockQuality = gameState.lockController.lockQuality;
-
-          // Compute trajectory for HUD arc
           List<TrajectoryPoint>? trajectory;
           if (simResult != null) {
             trajectory = computeTrajectoryArc(
@@ -156,24 +149,17 @@ class _HudScreenState extends State<HudScreen>
           return Stack(
             fit: StackFit.expand,
             children: [
-              // ── PROVEN: Camera passthrough ───────────────────────────────
               _buildCameraLayer(),
-
-              // ── PROVEN: Green tint overlay (5% opacity) ──────────────────
               Container(color: kCameraTint.withValues(alpha: 0.05)),
-
-              // ── STATIC HEAD GUIDE ────────────────────────────────────────
               CustomPaint(
                 painter: StaticHeadGuidePainter(color: kTacticalGreen),
                 size: MediaQuery.of(context).size,
               ),
-
-              // ── PROVEN: Reticle overlay ──────────────────────────────────
               AnimatedBuilder(
                 animation: _pulseController,
                 builder: (context, _) => CustomPaint(
                   painter: MissileLockReticlePainter(
-                    targetPitchDeg: simResult?.targetPitchDeg ?? 45.0,
+                    targetPitchDeg: simResult?.targetPitchDeg ?? 0.0,
                     actualPitchDeg: telemetry.pitchDeg,
                     speedKmh: telemetry.speedKmh,
                     lockState: lockState,
@@ -184,47 +170,32 @@ class _HudScreenState extends State<HudScreen>
                     trajectoryPoints: trajectory,
                     deviationM: simResult?.deviationM,
                     animValue: _pulseController.value,
-                    seatSide: gameState.seatSide,
                   ),
                   size: MediaQuery.of(context).size,
                 ),
               ),
-
-              // ── PROVEN: Top diagnostics bar ──────────────────────────────
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: _buildTopBar(simResult, telemetry, lockState),
               ),
-
-              // ── PROVEN: Bottom telemetry bar ─────────────────────────────
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
                 child: _buildBottomBar(telemetry, lockState, gameState),
               ),
-
-              // ── RULE 8: Demo Mode indicator ──────────────────────────────
               if (telemetry.isDemoMode)
-                Positioned(
-                  top: 80,
-                  right: 16,
-                  child: _buildDemoModeIndicator(),
-                ),
-
-              // ── REAR-FACING indicator ────────────────────────────────────
+                Positioned(top: 80, right: 16, child: _buildDemoModeIndicator()),
               if (gameState.isFacingBackwards)
                 Positioned(
                   top: telemetry.isDemoMode ? 120 : 80,
                   right: 16,
                   child: _buildRearFacingIndicator(),
                 ),
-
-              // ── CAMERA SWITCHER ──────────────────────────────────────────
               Positioned(
-                top: telemetry.isDemoMode 
+                top: telemetry.isDemoMode
                     ? (gameState.isFacingBackwards ? 160 : 120)
                     : (gameState.isFacingBackwards ? 120 : 80),
                 right: 16,
@@ -234,16 +205,28 @@ class _HudScreenState extends State<HudScreen>
                   tooltip: 'Switch Camera',
                 ),
               ),
-
-              // ── LAUNCH button (visible when locked) ──────────────────────
               if (lockState == SpitLockState.locked &&
                   gameState.phase != GamePhase.launched &&
-                  gameState.phase != GamePhase.scored)
+                  gameState.phase != GamePhase.scored &&
+                  !_challengeController.isRunning)
                 Positioned(
                   bottom: 80,
                   left: 0,
                   right: 0,
                   child: _buildLaunchButton(gameState),
+                ),
+              if (_challengeController.isRunning)
+                Center(
+                  child: Text(
+                    _challengeLabel(_challengeState),
+                    style: const TextStyle(
+                      color: kTacticalGreen,
+                      fontFamily: 'SpaceMono',
+                      fontSize: 64,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 6,
+                    ),
+                  ),
                 ),
             ],
           );
@@ -252,6 +235,7 @@ class _HudScreenState extends State<HudScreen>
     );
   }
 
+  // ── RULE 8: Demo Mode indicator ──────────────────────────────────────────
   // ── PROVEN: Camera passthrough build ─────────────────────────────────────
 
   Widget _buildCameraLayer() {
@@ -353,6 +337,7 @@ class _HudScreenState extends State<HudScreen>
       ),
     );
   }
+
   // ── RULE 8: Demo Mode indicator ──────────────────────────────────────────
 
   Widget _buildDemoModeIndicator() {
@@ -399,10 +384,7 @@ class _HudScreenState extends State<HudScreen>
   Widget _buildLaunchButton(GameState gameState) {
     return Center(
       child: GestureDetector(
-        onTap: () async {
-          await _haptic.onLaunch();
-          gameState.launch();
-        },
+        onTap: () => _startChallenge(gameState),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
           decoration: BoxDecoration(
@@ -410,7 +392,7 @@ class _HudScreenState extends State<HudScreen>
             color: Colors.black.withValues(alpha: 0.7),
           ),
           child: const Text(
-            '⚡ EXECUTE SPIT PROTOCOL',
+            'START SPIT',
             style: TextStyle(
               color: kTacticalGreen,
               fontFamily: 'SpaceMono',
@@ -424,6 +406,51 @@ class _HudScreenState extends State<HudScreen>
     );
   }
 
+  Future<void> _startChallenge(GameState gameState) async {
+    final result = await _challengeController.run(
+      captureFrame: _captureFrame,
+      onCountdownCue: _haptic.onLockLost,
+      onGoCue: _haptic.onLaunch,
+      onStateChanged: (state) {
+        if (mounted) setState(() => _challengeState = state);
+      },
+    );
+    if (!mounted) return;
+    gameState.launch(challengeResult: result);
+    setState(() => _challengeState = ChallengeState.ready);
+  }
+
+  Future<File?> _captureFrame() async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) {
+      throw const CameraCaptureException('Camera is not ready');
+    }
+    try {
+      final image = await controller.takePicture();
+      return File(image.path);
+    } catch (error) {
+      throw CameraCaptureException('Could not capture camera frame: $error');
+    }
+  }
+
+  String _challengeLabel(ChallengeState state) {
+    switch (state) {
+      case ChallengeState.countdown3:
+        return '3';
+      case ChallengeState.countdown2:
+        return '2';
+      case ChallengeState.countdown1:
+        return '1';
+      case ChallengeState.go:
+        return 'GO!';
+      case ChallengeState.capturing:
+        return 'CAPTURE';
+      case ChallengeState.analyzing:
+        return 'ANALYZING';
+      default:
+        return '';
+    }
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 

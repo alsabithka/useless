@@ -35,7 +35,6 @@ class MissileLockReticlePainter extends CustomPainter {
   final double deltaDeg;
   final double rollDeg;
   final bool isDemoMode;
-  final String seatSide; // driver/passenger
 
   // PLANNED fields
   final List<TrajectoryPoint>? trajectoryPoints;
@@ -53,7 +52,6 @@ class MissileLockReticlePainter extends CustomPainter {
     required this.deltaDeg,
     this.rollDeg = 0.0,
     required this.isDemoMode,
-    this.seatSide = 'driver',
     this.trajectoryPoints,
     this.deviationM,
     this.animValue = 0.0,
@@ -91,7 +89,7 @@ class MissileLockReticlePainter extends CustomPainter {
 
     // ── AIM GUIDE ARROW (hidden when locked) ────────────────────────────────
     if (lockState != SpitLockState.locked) {
-      _drawAimArrow(canvas, size, cx, cy, deltaDeg, speedKmh, actualPitchDeg, targetPitchDeg, rollDeg, seatSide: seatSide);
+      _drawAimArrow(canvas, size, cx, cy, deltaDeg, speedKmh, actualPitchDeg, targetPitchDeg, rollDeg);
     }
 
     // ── PROVEN: Corner brackets ────────────────────────────────────────────
@@ -277,9 +275,8 @@ class MissileLockReticlePainter extends CustomPainter {
     canvas.drawRect(demoRect, demoPaint);
   }
 
-  void _drawAimArrow(Canvas canvas, Size size, double cx, double cy,
-      double deltaDeg, double speedKmh, double actualPitch, double targetPitch, double rollDeg,
-      {String seatSide = 'driver'}) {
+    void _drawAimArrow(Canvas canvas, Size size, double cx, double cy,
+      double deltaDeg, double speedKmh, double actualPitch, double targetPitch, double rollDeg) {
     final Paint arrowPaint = Paint()
       ..color = kTacticalGreen.withValues(alpha: 0.85)
       ..style = PaintingStyle.fill;

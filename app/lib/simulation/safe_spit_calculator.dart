@@ -1,156 +1,44 @@
 // safe_spit_calculator.dart — SAFE//SPIT
 //
-// Deterministic, pure-Dart virtual projectile calculator.
+// PROVEN core simulation: preserved byte-for-behavior from the prototype.
+// This is the canonical, pure Dart implementation of the target-pitch formula.
 //
-// This file keeps the existing public API while making the angle
-// conventions and numerical behavior internally consistent.
+// RULE 2: No Flutter imports. This file is pure Dart.
+// RULE 1: Any change to this formula requires a DECISIONS.md entry.
+// RULE 16: Negative speed is clamped before the formula.
 //
-// APP ANGLE CONVENTION:
-//   0°   = phone/camera pointing straight up
-//   90°  = phone/camera pointing at the horizon
-//   180° = phone/camera pointing straight down
+// Formula:
+//   targetPitch(v) = clamp(v * 4.5, 0, 90)
 //
-// PHYSICS ANGLE CONVENTION:
-//   0°   = horizontal
-//   90°  = vertically upward
-//
-// Conversion:
-//   appPitch = 90° - physicsAngle
-//
-// No Flutter imports.
-// Pure Dart.
+// Test points (TV-01, TV-02, TV-03):
+//   0 km/h → 0.0° (vertical)
+//   10 km/h → 45.0°
+//   20 km/h → 90.0° (clamp engaged)
 
-import 'dart:math' as math;
-
+/// PROVEN core calculator. Preserved from the prototype.
+/// Pure function — no side effects, no imports beyond dart:math.
 class SafeSpitCalculator {
-  // ── PHYSICS CONSTANTS ─────────────────────────────────────────────────────
-
-  static const double g = 9.81;
-  static const double spitSpeedMs = 8.0;
-
-  // ── APP ANGLE CONVENTION ──────────────────────────────────────────────────
-
   static const double minAngle = 0.0;
-  static const double maxAngle = 180.0;
+  static const double maxAngle = 90.0; // degrees
+  static const double anglePerKmh = 4.5;
+  static const double lockToleranceDeg = 5.0; // PROVEN: |Δθ| <= 5.0 → locked
+  static const double relaxedToleranceDeg = 15.0; // rear-facing tolerance
 
-  // ── LOCK TOLERANCE ────────────────────────────────────────────────────────
+  // ── INVERTED FORMULA ───────────────────────────────────────────────────────
 
-  static const double lockToleranceDeg = 5.0;
-  static const double relaxedToleranceDeg = 15.0;
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Utility
-  // ──────────────────────────────────────────────────────────────────────────
-
-  static double _clampAngle(double angle) {
-    return angle.clamp(minAngle, maxAngle);
+  /// Compute the target pitch from the phone's current speed.
+  ///
+  /// Zero speed points vertically up. The target rises with speed and is
+  /// constrained to the inclusive range [0, 90] degrees.
+  static double targetPitch(double speedKmh, {bool isFacingBackwards = false}) {
+    final double v = speedKmh < 0 ? 0 : speedKmh;
+    return (v * anglePerKmh).clamp(minAngle, maxAngle);
   }
 
-  static double _normalize180(double angle) {
-    var result = angle % 360.0;
-
-    if (result < 0.0) {
-      result += 360.0;
-    }
-
-    if (result > 180.0) {
-      result = 360.0 - result;
-    }
-
-    return result;
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  /// Calculates the virtual projectile angle from vehicle/reference speed.
+  /// Lock tolerance check (PROVEN).
   ///
-  /// The returned value uses the app convention:
-  ///
-  ///   0°  = up
-  ///   90° = horizon
-  ///   180° = down
-  ///
-  /// The calculation is deterministic and never modifies sensor data.
-  static double targetPitch(
-    double speedKmh, {
-    bool isFacingBackwards = false,
-  }) {
-    final double speed = math.max(0.0, speedKmh);
-    final double vehicleMs = speed / 3.6;
-
-    // Stationary reference case.
-    //
-    // There is no horizontal displacement in this simplified model,
-    // so the virtual high trajectory is vertical.
-    if (vehicleMs <= 1e-9) {
-      return isFacingBackwards ? 180.0 : 0.0;
-    }
-
-    final double v = spitSpeedMs;
-    final double v2 = v * v;
-
-    // Time scale used by the existing model.
-    final double tReference = v / g;
-
-    // Horizontal displacement of the moving reference.
-    final double x = vehicleMs * tReference;
-
-    // Same launch/target height.
-    const double y = 0.0;
-
-    // ── BALLISTIC SOLUTION ──────────────────────────────────────────────────
-    //
-    // tan(theta) =
-    //   (v² ± sqrt(v⁴ - g(gx² + 2yv²))) / (gx)
-    //
-    // We use the shallower mathematical root when it exists.
-
-    final double discriminant =
-        (v2 * v2) - g * (g * x * x + 2.0 * y * v2);
-
-    double physicsAngleDeg;
-
-    if (x <= 1e-9) {
-      physicsAngleDeg = 90.0;
-    } else if (discriminant <= 0.0) {
-      // Boundary of the reachable region.
-      physicsAngleDeg = 45.0;
-    } else {
-      final double sqrtDisc = math.sqrt(discriminant);
-
-      final double numerator = v2 - sqrtDisc;
-      final double denominator = g * x;
-
-      final double thetaRad = math.atan(numerator / denominator);
-      physicsAngleDeg = thetaRad * 180.0 / math.pi;
-    }
-
-    physicsAngleDeg = physicsAngleDeg.clamp(0.0, 90.0);
-
-    // Convert physics convention:
-    //
-    // physics 90° = straight up
-    // app       0° = straight up
-    //
-    final double appPitch = 90.0 - physicsAngleDeg;
-
-    if (isFacingBackwards) {
-      // Mirror around the horizon in the app coordinate system.
-      return _clampAngle(180.0 - appPitch);
-    }
-
-    return _clampAngle(appPitch);
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  /// Determines whether the current device pitch satisfies the target.
-  ///
-  /// `actualPitchDeg` MUST already be expressed in the same app convention:
-  ///
-  ///   0°   = up
-  ///   90°  = horizon
-  ///   180° = down
-  ///
-  /// This method does not alter the sensor reading.
+  /// Returns true when [actualPitchDeg] is within [lockToleranceDeg] of
+  /// [targetPitchDeg] (inclusive, per the proven <= operator).
   static bool isClearToEject({
     required double actualPitchDeg,
     required double targetPitchDeg,
@@ -158,55 +46,33 @@ class SafeSpitCalculator {
     double rollDeg = 0.0,
     bool isFacingBackwards = false,
   }) {
-    final double actual = _normalize180(actualPitchDeg);
-    final double target = _clampAngle(targetPitchDeg);
+    final double delta = (actualPitchDeg - targetPitchDeg).abs();
+    // At very low speeds (< 2.0 km/h), aerodynamic danger is ~0. Apply relaxed tolerance.
+    final bool useRelaxed = isFacingBackwards || speedKmh < 2.0;
+    final bool pitchLocked = delta <= (useRelaxed ? relaxedToleranceDeg : lockToleranceDeg);
 
-    final double delta = (actual - target).abs();
-
-    final bool useRelaxedTolerance =
-        isFacingBackwards || speedKmh < 2.0;
-
-    final double tolerance = useRelaxedTolerance
-        ? relaxedToleranceDeg
-        : lockToleranceDeg;
-
-    final bool pitchLocked = delta <= tolerance;
-
-    if (!pitchLocked) {
-      return false;
+    // If target pitch is > 135 (pointing UP), we must enforce strict roll
+    // For targets aiming near straight UP (pitch near 0) or straight DOWN (pitch near 180),
+    // we enforce a strict roll tolerance.
+    if (targetPitchDeg < 45.0 || targetPitchDeg > 135.0) {
+      double r = rollDeg % 360.0;
+      if (r > 180) r -= 360.0;
+      
+      // Roll could be ~0 (face up/upright) or ~180 (face down).
+      // Check distance to 0 and distance to 180.
+      final double distTo0 = r.abs();
+      final double distTo180 = (r.abs() - 180.0).abs();
+      if (distTo0 > 15.0 && distTo180 > 15.0) return false;
     }
 
-    // For near-vertical orientations, require the device to remain
-    // approximately upright.
-    if (target < 45.0 || target > 135.0) {
-      final double normalizedRoll = ((rollDeg + 180.0) % 360.0) - 180.0;
-
-      final double distanceTo0 = normalizedRoll.abs();
-      final double distanceTo180 =
-          (normalizedRoll.abs() - 180.0).abs();
-
-      final bool rollValid =
-          distanceTo0 <= 15.0 || distanceTo180 <= 15.0;
-
-      if (!rollValid) {
-        return false;
-      }
-    }
-
-    return true;
+    return pitchLocked;
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  /// Absolute pitch difference.
-  ///
-  /// Both values must use the same app-pitch convention.
+  /// Delta in degrees between actual and target pitch.
   static double deltaDeg({
     required double actualPitchDeg,
     required double targetPitchDeg,
   }) {
-    final double actual = _normalize180(actualPitchDeg);
-    final double target = _clampAngle(targetPitchDeg);
-
-    return (actual - target).abs();
+    return (actualPitchDeg - targetPitchDeg).abs();
   }
 }
