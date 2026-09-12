@@ -33,17 +33,17 @@ String _letterGrade(int total) {
 Color _gradeColor(String grade) {
   switch (grade) {
     case 'S':
-      return const Color(0xFFFFD700); // Gold
+      return const Color(0xFFB8860B); // Dark gold — readable on light bg
     case 'A':
-      return AppColors.acidGreen; // Website acid-green
+      return AppColors.black; // Black on light bg
     case 'B':
-      return const Color(0xFF00BFFF); // Cyan
+      return const Color(0xFF006699); // Dark cyan
     case 'C':
-      return AppColors.orange; // Website orange
+      return AppColors.orange; // Website orange (already dark enough)
     case 'D':
-      return const Color(0xFFFF6600); // Deep orange
+      return const Color(0xFFCC4400); // Dark orange
     default:
-      return const Color(0xFFFF2200); // Red
+      return const Color(0xFFCC0000); // Dark red
   }
 }
 
@@ -194,7 +194,7 @@ class ResultScreen extends StatelessWidget {
         Text(
           '$total pts',
           style: TextStyle(
-            color: AppColors.acidGreen,
+            color: AppColors.black,
             fontFamily: 'SpaceMono',
             fontSize: ptsSize,
             fontWeight: FontWeight.bold,
@@ -233,7 +233,7 @@ class ResultScreen extends StatelessWidget {
           Text(
             '${result.score.toStringAsFixed(2)} / 1.00',
             style: TextStyle(
-              color: AppColors.acidGreen,
+              color: AppColors.black,
               fontFamily: 'SpaceMono',
               fontSize: challengeScoreSize,
               fontWeight: FontWeight.bold,
@@ -379,7 +379,7 @@ class ResultScreen extends StatelessWidget {
                 Text(
                   '${score.total}',
                   style: TextStyle(
-                    color: AppColors.acidGreen,
+                    color: AppColors.black,
                     fontFamily: 'SpaceMono',
                     fontSize: totalSz,
                     fontWeight: FontWeight.bold,
@@ -507,12 +507,12 @@ class ResultScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           color: filled
-              ? AppColors.acidGreen.withValues(alpha: 0.12)
+              ? AppColors.black.withValues(alpha: 0.08)
               : Colors.transparent,
           border: Border.all(
             color: filled
-                ? AppColors.acidGreen
-                : AppColors.acidGreen.withValues(alpha: 0.35),
+                ? AppColors.black
+                : AppColors.black.withValues(alpha: 0.35),
             width: filled ? 1.5 : 1.0,
           ),
         ),
@@ -521,8 +521,8 @@ class ResultScreen extends StatelessWidget {
             label,
             style: TextStyle(
               color: filled
-                  ? AppColors.acidGreen
-                  : AppColors.acidGreen.withValues(alpha: 0.55),
+                  ? AppColors.black
+                  : AppColors.black.withValues(alpha: 0.55),
               fontFamily: 'SpaceMono',
               fontSize: sz,
               fontWeight: filled ? FontWeight.bold : FontWeight.normal,
@@ -541,7 +541,7 @@ class ResultScreen extends StatelessWidget {
       Text(
         text,
         style: TextStyle(
-          color: AppColors.acidGreen.withValues(alpha: alpha),
+          color: AppColors.black.withValues(alpha: alpha),
           fontFamily: 'SpaceMono',
           fontSize: size,
           letterSpacing: 1.2,
