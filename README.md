@@ -75,7 +75,7 @@ For Software:
 
 ### Project Demo
 # Video
-[Add your demo video link here]
+[Demo Video — SAFE//SPIT in action](https://drive.google.com/file/d/1ZToiOyaHkLRw0d3NiWRcLRGSrMBpRSKB/view?usp=drivesdk)
 *A real-world test demonstrating the transition from SEARCHING to SPIT LOCK using live vehicular speed and pitch matching.*
 
 # Additional Demos
