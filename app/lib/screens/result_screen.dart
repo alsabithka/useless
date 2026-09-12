@@ -13,6 +13,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import 'package:video_player/video_player.dart';
 
 import '../game/game_state.dart';
 import '../challenge/challenge_state.dart';
@@ -64,11 +65,105 @@ String _gradeLabel(String grade) {
   }
 }
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key});
 
   @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  VideoPlayerController? _videoController;
+  bool _showingVideo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final gameState = Provider.of<GameState>(context, listen: false);
+      final score = gameState.finalScore;
+      if (score != null) {
+        if (score.total >= 700) {
+          _initVideo('assets/video/perfect_ok.mp4');
+        } else {
+          _initVideo('assets/video/perfect_spit.mp4');
+        }
+      }
+    });
+  }
+
+  void _initVideo(String assetPath) {
+    setState(() {
+      _showingVideo = true;
+    });
+    _videoController = VideoPlayerController.asset(assetPath)
+      ..initialize().then((_) {
+        setState(() {}); // Ensure the first frame is shown
+        _videoController!.play();
+      });
+
+    _videoController!.addListener(() {
+      if (_videoController!.value.isInitialized &&
+          !_videoController!.value.isPlaying &&
+          (_videoController!.value.position >= _videoController!.value.duration ||
+           _videoController!.value.position == Duration.zero && _videoController!.value.duration != Duration.zero)) {
+           // position == zero check is sometimes needed on some platforms if it wraps around or stops.
+           // actually better:
+      }
+      if (_videoController!.value.isInitialized &&
+          _videoController!.value.position >= _videoController!.value.duration) {
+        _skipVideo();
+      }
+    });
+  }
+
+  void _skipVideo() {
+    if (!mounted) return;
+    if (_showingVideo) {
+      setState(() {
+        _showingVideo = false;
+      });
+      _videoController?.pause();
+      _videoController?.dispose();
+      _videoController = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_showingVideo) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            if (_videoController != null && _videoController!.value.isInitialized)
+              Center(
+                child: AspectRatio(
+                  aspectRatio: _videoController!.value.aspectRatio,
+                  child: VideoPlayer(_videoController!),
+                ),
+              )
+            else
+              const Center(child: CircularProgressIndicator(color: Colors.white)),
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 16,
+              right: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                onPressed: _skipVideo,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Consumer<GameState>(
       builder: (context, gameState, _) {
         final score = gameState.finalScore;
