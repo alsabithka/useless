@@ -71,7 +71,7 @@ For Software:
 
 # Diagrams
 ![Workflow](docs/architecture_diagram.png)
-*Our decoupled architecture featuring the NormalizedTelemetry seam for seamless synthetic data injection.*
+*Data pipeline: Hardware Sensors → Sensor Manager (NormalizedTelemetry seam) → Game State (SpitLockController + ChallengeController) → Simulation Engine (Physics + Trajectory + Score). Game State then drives the HUD Screen (AR overlay + Camera) → Result Screen (Score + Grade) → Local Store (SharedPreferences).*
 
 ### Project Demo
 # Video
