@@ -60,13 +60,13 @@ flutter run
 For Software:
 
 # Screenshots (Add at least 3)
-![Screenshot1](docs/screenshot_1.jpg)
+![Screenshot1](docs/screenshot_1.jpeg)
+*App dashboard for selecting normal or demo mode.*
+
+![Screenshot2](docs/screenshot_2.jpeg)
 *The tactical AR HUD locking onto the optimal trajectory while moving.*
 
-![Screenshot2](docs/screenshot_2.jpg)
-*Demo mode generating synthetic telemetry for indoor pitch testing.*
-
-![Screenshot3](docs/screenshot_3.jpg)
+![Screenshot3](docs/screenshot_3.jpeg)
 *Profile screen showing the user's personal mission history and scores.*
 
 # Diagrams
